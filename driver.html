@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BookGadi Driver Live - Secure Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f4f7f6; padding: 20px; }
+        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 350px; margin: auto; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: white; font-size: 16px; }
+        .btn-go { background: #1a73e8; }
+        .btn-off { background: #dc3545; margin-top: 20px; }
+        #log { color: #dc3545; font-size: 13px; margin-top: 15px; font-weight: bold; }
+        .status-box { background: #e8f5e9; padding: 15px; border-radius: 10px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <img src="https://www.bookgadi.com/logo.png" width="120" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3082/3082383.png'">
+        <h3 style="color:#333;">Driver Duty Panel</h3>
+        
+        <div id="loginSection">
+            <p style="font-size: 13px; color: #666;">Admin द्वारा दी गई ID से लॉगिन करें</p>
+            <input type="text" id="driverInputID" placeholder="Enter Your Driver ID">
+            <button class="btn-go" onclick="checkAndStart()">Duty Start Karein</button>
+        </div>
+
+        <div id="statusSection" class="status-box">
+            <p style="color:#2e7d32; margin: 0;">● Aap Online Hain</p>
+            <h4 id="welcomeName" style="margin: 10px 0;"></h4>
+            <p id="displayID" style="font-size: 12px; color: #666;"></p>
+            <button class="btn-off" onclick="stopDuty()">Duty Offline Karein</button>
+        </div>
+        
+        <div id="log"></div>
+    </div>
+
+    <script>
+        const config = {
+            databaseURL: "https://bookgadi-97c98-default-rtdb.firebaseio.com",
+            projectId: "bookgadi-97c98"
+        };
+        firebase.initializeApp(config);
+        var db = firebase.database();
+
+        var watchId = null;
+
+        function checkAndStart() {
+            var inputID = document.getElementById('driverInputID').value.trim();
+            var log = document.getElementById('log');
+            log.innerText = "Checking ID...";
+
+            if(inputID === "") {
+                log.innerText = "Kripya Driver ID daalein!";
+                return;
+            }
+
+            db.ref('live_cars/' + inputID).once('value').then((snapshot) => {
+                if (snapshot.exists()) {
+                    // ID को ब्राउज़र की मेमोरी में सेव करें
+                    localStorage.setItem('activeDriverId', inputID);
+                    var driverData = snapshot.val();
+                    startTracking(inputID, driverData.name);
+                } else {
+                    log.innerText = "Ghalat ID! Admin se sampark karein.";
+                }
+            }).catch((err) => {
+                log.innerText = "Error: " + err.message;
+            });
+        }
+
+        function startTracking(id, name) {
+            if (navigator.geolocation) {
+                document.getElementById('loginSection').style.display = "none";
+                document.getElementById('statusSection').style.display = "block";
+                document.getElementById('welcomeName').innerText = name;
+                document.getElementById('displayID').innerText = "ID: " + id;
+                document.getElementById('log').innerText = "";
+
+                // GPS अपडेट शुरू करें
+                watchId = navigator.geolocation.watchPosition(function(position) {
+                    db.ref('live_cars/' + id).update({
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                        status: "online",
+                        last_updated: Date.now()
+                    });
+                }, function(error) {
+                    console.log("GPS Error");
+                }, { enableHighAccuracy: true });
+
+            }
+        }
+
+        function stopDuty() {
+            // मेमोरी से ID निकालें
+            var id = localStorage.getItem('activeDriverId');
+            
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+            }
+
+            if (id) {
+                // ध्यान दें: यहाँ remove() नहीं update() कर रहे हैं 
+                // ताकि एडमिन द्वारा भरा गया नाम (Name) डिलीट न हो।
+                // मैप (bookgadi.com) पर फिल्टर लगा होगा जो केवल status: "online" दिखाएगा।
+                db.ref('live_cars/' + id).update({
+                    status: "offline",
+                    lat: null, // लोकेशन हटा दें ताकि मैप से कार गायब हो जाए
+                    lng: null
+                }).then(() => {
+                    localStorage.removeItem('activeDriverId');
+                    alert("Duty Offline Ho Gayi Hai.");
+                    location.reload();
+                }).catch((err) => {
+                    // अगर अपडेट फेल हो तो सीधे रिलोड करें
+                    location.reload();
+                });
+            } else {
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
