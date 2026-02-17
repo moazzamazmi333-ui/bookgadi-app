@@ -44,10 +44,18 @@
 
         /* History Style */
         .btn-history { background: #6c757d; color: white; border: none; width: 100%; padding: 10px; margin-top: 5px; cursor: pointer; font-weight: bold; font-size: 13px; }
-        #historySection { display: none; background: #fff; border-top: 2px solid #ddd; padding: 10px; max-height: 250px; overflow-y: auto; font-size: 12px; }
+        #historySection { display: none; background: #fff; border-top: 2px solid #ddd; padding: 10px; max-height: 350px; overflow-y: auto; font-size: 12px; }
         .history-table { width: 100%; border-collapse: collapse; }
         .history-table th, .history-table td { border: 1px solid #ddd; padding: 5px; text-align: left; }
         .history-table th { background: #f2f2f2; }
+
+        /* Daily Report Summary Box */
+        .report-box { background: #e3f2fd; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #1a73e8; display: flex; justify-content: space-around; text-align: center; }
+        .report-box div b { display: block; font-size: 16px; color: #1a73e8; }
+        .report-box div span { font-size: 10px; color: #555; text-transform: uppercase; }
+
+        /* Delete All Button */
+        .btn-delete-all { background: #d93025; color: white; border: none; width: 100%; padding: 8px; margin-top: 10px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 11px; }
 
         /* Driver Cards */
         .driver-card { 
@@ -59,13 +67,10 @@
         .dot { height: 7px; width: 7px; border-radius: 50%; margin-right: 5px; }
         .delete-btn { color: #ff4d4d; border: none; background: none; cursor: pointer; font-size: 20px; }
 
-        /* Mobile Optimization */
         @media screen and (max-width: 768px) {
             #adminUI { flex-direction: column; }
             #sidebar { width: 100%; height: 50%; border-right: none; }
             #map { height: 50%; width: 100%; }
-            .sidebar-header { padding: 10px 15px; }
-            .add-driver-section h4 { font-size: 12px; }
         }
     </style>
 </head>
@@ -98,6 +103,11 @@
             </div>
 
             <div id="historySection">
+                <div class="report-box">
+                    <div><span>Today's Bookings</span><b id="todayCount">0</b></div>
+                    <div style="border-left:1px solid #ccc; padding-left:10px;"><span>Total Fare</span><b id="todayTotal">₹0</b></div>
+                </div>
+
                 <table class="history-table">
                     <thead>
                         <tr>
@@ -108,6 +118,7 @@
                     </thead>
                     <tbody id="historyBody"></tbody>
                 </table>
+                <button class="btn-delete-all" onclick="deleteAllHistory()">⚠️ Delete All History</button>
             </div>
 
             <div id="driverList">
@@ -155,7 +166,6 @@
             startTracking();
         }
 
-        // History Toggle Function
         function toggleHistory() {
             const hist = document.getElementById('historySection');
             if(hist.style.display === "none" || hist.style.display === "") {
@@ -166,49 +176,60 @@
             }
         }
 
-        // Load History from Firebase
-       
-function loadHistory() {
-    db.ref('bookings').limitToLast(20).on('value', (snap) => {
-        const data = snap.val();
-        const tbody = document.getElementById('historyBody');
-        tbody.innerHTML = "";
-        
-        if(data) {
-            Object.keys(data).reverse().forEach(id => {
-                const b = data[id];
-                tbody.innerHTML += `
-                    <tr>
-                        <td style="padding:5px;">${b.time}<br>${b.date}</td>
-                        <td style="padding:5px;">
-                            <b>${b.name}</b><br>
-                            <small>${b.pickup} ➔ ${b.drop}</small>
-                        </td>
-                        <td style="padding:5px; text-align:center;">
-                            ${b.fare}<br>
-                            <button onclick="deleteBooking('${id}')" style="border:none; background:none; color:red; cursor:pointer; font-size:16px; margin-top:5px;">🗑️</button>
-                        </td>
-                    </tr>
-                `;
-            });
-        } else {
-            tbody.innerHTML = "<tr><td colspan='3' style='text-align:center;'>No Data</td></tr>";
-        }
-    });
-}
+        function loadHistory() {
+            const todayDate = new Date().toLocaleDateString('en-GB'); 
 
-// 2. बुकिंग डिलीट करने का नया फंक्शन
-function deleteBooking(id) {
-    if(confirm("क्या आप इस बुकिंग को हिस्ट्री से हटाना चाहते हैं?")) {
-        db.ref('bookings/' + id).remove()
-        .then(() => {
-            alert("बुकिंग हटा दी गई!");
-        })
-        .catch((error) => {
-            alert("Error: " + error.message);
-        });
-    }
-}
+            db.ref('bookings').on('value', (snap) => {
+                const data = snap.val();
+                const tbody = document.getElementById('historyBody');
+                tbody.innerHTML = "";
+                
+                let count = 0;
+                let totalFare = 0;
+
+                if(data) {
+                    Object.keys(data).reverse().forEach(id => {
+                        const b = data[id];
+                        
+                        // Today's Report Calculation
+                        // Ensure your booking dates match 'DD/MM/YYYY' format or adjust here
+                        if(b.date === todayDate || b.date === new Date().toLocaleDateString()) {
+                            count++;
+                            let fareValue = b.fare ? String(b.fare).replace(/[^0-9]/g, '') : "0";
+                            totalFare += parseInt(fareValue) || 0;
+                        }
+
+                        tbody.innerHTML += `
+                            <tr>
+                                <td style="padding:5px;">${b.time}<br>${b.date}</td>
+                                <td style="padding:5px;"><b>${b.name}</b><br><small>${b.pickup} ➔ ${b.drop}</small></td>
+                                <td style="padding:5px; text-align:center;">
+                                    ₹${b.fare}<br>
+                                    <button onclick="deleteBooking('${id}')" style="border:none; background:none; color:red; cursor:pointer; font-size:16px; margin-top:5px;">🗑️</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    tbody.innerHTML = "<tr><td colspan='3' style='text-align:center;'>No Data</td></tr>";
+                }
+
+                document.getElementById('todayCount').innerText = count;
+                document.getElementById('todayTotal').innerText = "₹" + totalFare;
+            });
+        }
+
+        function deleteBooking(id) {
+            if(confirm("क्या आप इस बुकिंग को हिस्ट्री से हटाना चाहते हैं?")) {
+                db.ref('bookings/' + id).remove();
+            }
+        }
+
+        function deleteAllHistory() {
+            if(confirm("सावधान! क्या आप पूरी बुकिंग हिस्ट्री को हमेशा के लिए डिलीट करना चाहते हैं?")) {
+                db.ref('bookings').remove().then(() => alert("History Cleared!"));
+            }
+        }
 
         function createNewDriver() {
             const id = document.getElementById('newDriverID').value.trim();
@@ -225,7 +246,7 @@ function deleteBooking(id) {
         }
 
         function removeDriver(id) {
-            if(confirm("हटाएं?")) db.ref('live_cars/' + id).remove();
+            if(confirm("ड्राइवर हटाएं?")) db.ref('live_cars/' + id).remove();
         }
 
         function startTracking() {
@@ -258,7 +279,7 @@ function deleteBooking(id) {
                         if(isOnline && data.lat) {
                             map.setCenter({ lat: data.lat, lng: data.lng });
                             map.setZoom(15);
-                        } else { alert("Offline"); }
+                        } else { alert("ड्राइवर ऑफलाइन है!"); }
                     };
                     listDiv.appendChild(card);
 
