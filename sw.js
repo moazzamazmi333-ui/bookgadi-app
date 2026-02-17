@@ -1,14 +1,5 @@
-const CACHE_NAME = 'bookgadi-v1';
-const urlsToCache = ['/'];
-
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
-  );
-});
-
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request).then(response => response || fetch(event.request))
-  );
-});
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('Service Worker registered!', reg))
+        .catch(err => console.log('SW registration failed:', err));
+}
