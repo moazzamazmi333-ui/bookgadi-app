@@ -294,18 +294,30 @@ function sendWhatsApp(){
     const f = document.getElementById("finalFare") ? document.getElementById("finalFare").innerText : "";
     
     if(!n || ph.length < 10) return alert("Sahi details bharein");
+
+    const now = new Date();
+    const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    const dateString = now.toLocaleDateString();
     
-    // Google Maps Navigation Link (Pickup se Drop tak ka raasta)
-    // saddr = Start Address (Pickup), daddr = Destination Address (Drop)
-    const navLink = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(p)}&destination=${encodeURIComponent(d)}&travelmode=driving`;
+    // डेटाबेस में सेव करने के लिए ऑब्जेक्ट
+    const bookingData = {
+        name: n,
+        phone: ph,
+        pickup: p,
+        drop: d,
+        fare: f,
+        time: timeString,
+        date: dateString,
+        timestamp: Date.now()
+    };
+
+    // 1. Firebase में बुकिंग सेव करें
+    db.ref('bookings').push(bookingData);
+
+    // 2. व्हाट्सएप मैसेज तैयार करें
+    const navLink = "https://www.google.com/maps/dir/?api=1&origin=" + encodeURIComponent(p) + "&destination=" + encodeURIComponent(d) + "&travelmode=driving";
     
-    const msg = `*BookGadi Booking Request*\n\n` +
-                `👤 *Name:* ${n}\n` +
-                `📞 *Phone:* ${ph}\n` +
-                `💰 *Fare:* ${f}\n` +
-                `📍 *Pickup:* ${p}\n` +
-                `🏁 *Drop:* ${d}\n\n` +
-                `🗺️ *Navigation Route:* ${navLink}`;
+    const msg = `*BookGadi Booking Request*\n\n📅 *Date:* ${dateString}\n⏰ *Time:* ${timeString}\n👤 *Name:* ${n}\n📞 *Phone:* ${ph}\n💰 *Fare:* ${f}\n📍 *Pickup:* ${p}\n🏁 *Drop:* ${d}\n\n🗺️ *Route:* \n${navLink}\n\n📞 *Call:* tel:${ph}`;
     
     window.open(`https://wa.me/919651191446?text=${encodeURIComponent(msg)}`, "_blank");
 }
