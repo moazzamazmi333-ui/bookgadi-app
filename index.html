@@ -322,49 +322,33 @@ function sendWhatsApp(){
     
     window.open(`https://wa.me/919651191446?text=${encodeURIComponent(msg)}`, "_blank");
 }
-    // 1. प्रॉम्प्ट को होल्ड करने के लिए वेरिएबल
-let deferredPrompt;
+  let deferredPrompt;
 
-// 2. ब्राउज़र के इंस्टॉल इवेंट को पकड़ना
+// 1. ब्राउज़र के डिफॉल्ट प्रॉम्प्ट को कैप्चर करें
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    console.log("Install prompt ready!");
+    console.log("Install Prompt Ready - Waiting for User interaction");
+    
+    // ऑटो-ट्रिगर: जैसे ही यूजर स्क्रीन पर कहीं भी टच करेगा, प्रॉम्प्ट आ जाएगा
+    window.addEventListener('click', triggerAutoInstall, { once: true });
 });
 
-// 3. मुख्य फंक्शन - जो बटन क्लिक पर चलेगा
-function openInstallPopup() {
-    console.log("Button Clicked!"); // चेक करने के लिए कि बटन काम कर रहा है
-    
-    // अगर ब्राउज़र ऑटो-प्रॉम्प्ट के लिए तैयार है
+function triggerAutoInstall() {
     if (deferredPrompt) {
-        deferredPrompt.prompt();
+        deferredPrompt.prompt(); // असली इंस्टॉल पॉपअप दिखाएं
         deferredPrompt.userChoice.then((choiceResult) => {
             if (choiceResult.outcome === 'accepted') {
-                console.log('User installed the app');
+                console.log('User accepted the install prompt');
             }
             deferredPrompt = null;
         });
-    } 
-    
-    // ब्राउज़र सपोर्ट करे या न करे, पॉपअप को हमेशा दिखाओ (Force Show)
-    const modal = document.getElementById("installPopup");
-    if (modal) {
-        modal.style.display = "flex";
-    } else {
-        alert("बेहतर अनुभव के लिए ब्राउज़र सेटिंग में जाकर 'Add to Home Screen' चुनें।");
     }
 }
 
-// 4. पॉपअप बंद करने का फंक्शन
-function closeInstallPopup() {
-    const modal = document.getElementById("installPopup");
-    if (modal) modal.style.display = "none";
-}
-
-// 5. सर्विस वर्कर (अगर फाइल बनाई है तो)
+// 2. सर्विस वर्कर रजिस्ट्रेशन (अनिवार्य)
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(err => console.log("SW error:", err));
+    navigator.serviceWorker.register('/sw.js');
 }
 </script>
 
