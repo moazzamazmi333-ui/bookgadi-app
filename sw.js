@@ -1,3 +1,14 @@
-self.addEventListener('fetch', function(event) {
-    // यह फाइल खाली भी हो तो चलती है, बस इसका होना जरूरी है
+const CACHE_NAME = 'bookgadi-v1';
+const urlsToCache = ['/'];
+
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
+  );
+});
+
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request).then(response => response || fetch(event.request))
+  );
 });
