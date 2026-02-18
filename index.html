@@ -344,6 +344,8 @@ function calculateFare(){
           
             directionsRenderer.setDirections(res);
             const leg = res.routes[0].legs[0];
+            const pLat = leg.start_location.lat();
+            const pLng = leg.start_location.lng();
             const km = leg.distance.value / 1000;
             const time = leg.duration.text;
             const rate = Number(document.getElementById("vehicle").value);
