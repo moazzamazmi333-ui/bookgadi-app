@@ -144,6 +144,7 @@ select { width: 100%; padding: 14px; border-radius: 12px; border: 1.5px solid #e
         <select id="vehicle">
             <option value="12">🚙 SUV (₹12/km)</option>
             <option value="10">🚕 Sedan (₹10/km)</option>
+            <option value="7">💺 Airport Shared Seat PickUp (₹7/km)</option>
         </select>
 
         <div id="tripOptions" class="trip-type">
@@ -192,6 +193,15 @@ let map, geocoder, pickupAC, dropAC, directionsRenderer, directionsService, info
 let markers = {};
 const LKO = { lat: 26.8467, lng: 80.9462 };
 const AZM = { lat: 26.0739, lng: 83.1859 };
+
+// दूरी मापने के लिए फंक्शन (Location Lock के लिए)
+function getDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
 
 function initMap(){
     document.getElementById('rideDate').valueAsDate = new Date();
@@ -321,6 +331,17 @@ function calculateFare(){
 
     directionsService.route({ origin: p, destination: d, travelMode: 'DRIVING' }, (res, status) => {
         if (status === 'OK') {
+
+            // --- LOCATION LOCK LOGIC ---
+            const distFromAzm = getDistance(AZM.lat, AZM.lng, pLat, pLng);
+            const distFromLko = getDistance(LKO.lat, LKO.lng, pLat, pLng);
+
+            if (distFromAzm > 100 && distFromLko > 50) {
+                alert("Maaf kijiye, BookGadi abhi keval Azamgarh (100km) aur Lucknow (50km) area mein hi pickup deti hai.");
+                return;
+            }
+            // ---------------------------
+          
             directionsRenderer.setDirections(res);
             const leg = res.routes[0].legs[0];
             const km = leg.distance.value / 1000;
