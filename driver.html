@@ -46,7 +46,7 @@
 
 <div class="container">
     <div class="header">
-        <img src="https://static.wixstatic.com/media/843689_1939d114418d412a8c15a739fccae1d0~mv2.png" alt="BookGadi">
+        <img src="https://www.bookgadi.com/logo.png" alt="BookGadi">
         <div id="loginSection">
             <div class="input-group">
                 <label>Driver ID</label>
@@ -90,7 +90,7 @@
     let currentName = "";
     let lastTopId = null;
     let isFirst = true;
-    let gpsInterval = null;
+    let gpsWatchID = null; // gpsInterval की जगह अब watchID इस्तेमाल होगा
 
     window.onload = function() {
         const sid = localStorage.getItem('bg_id');
@@ -118,8 +118,30 @@
         document.getElementById('statusSection').style.display = "block";
         document.getElementById('welcomeName').innerText = "Hi, " + currentName;
         loadBookings();
-        updateGPS();
-        gpsInterval = setInterval(updateGPS, 300000); 
+        
+        // पुरानी setInterval विधि को हटाकर live tracking शुरू करें
+        startLiveTracking(); 
+    }
+
+    // नया फंक्शन: ऑटोमैटिक लोकेशन अपडेट के लिए
+    function startLiveTracking() {
+        if (!currentID || !navigator.geolocation) return;
+
+        gpsWatchID = navigator.geolocation.watchPosition(pos => {
+            db.ref('live_cars/' + currentID).update({
+                lat: pos.coords.latitude, 
+                lng: pos.coords.longitude,
+                status: "online", 
+                last_seen: Date.now()
+            });
+            console.log("GPS Auto-Updated");
+        }, err => {
+            console.warn("GPS Error: " + err.message);
+        }, {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 15000
+        });
     }
 
     function loadBookings() {
@@ -188,20 +210,10 @@
         });
     }
 
-    function updateGPS() {
-        if (!currentID) return;
-        navigator.geolocation.getCurrentPosition(pos => {
-            db.ref('live_cars/' + currentID).update({
-                lat: pos.coords.latitude, 
-                lng: pos.coords.longitude,
-                status: "online", 
-                last_seen: Date.now()
-            });
-        }, null, { enableHighAccuracy: true });
-    }
-
     function stopDuty() {
-        if(gpsInterval) clearInterval(gpsInterval);
+        // ट्रैकिंग रोकें
+        if(gpsWatchID) navigator.geolocation.clearWatch(gpsWatchID);
+        
         db.ref('live_cars/' + currentID).update({ status: "offline" }).then(() => {
             localStorage.clear();
             location.reload();
